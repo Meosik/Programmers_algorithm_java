@@ -3,39 +3,136 @@ import java.util.*;
 
 class Solution {
     public String solution(String sentence) {
-        StringBuilder sb = new StringBuilder();
-        HashSet<Character> used = new HashSet<>();
-        ArrayList<Integer> smallidx = new ArrayList<>();
-        for(int i = 0; i < sentence.length(); i++){
-            char temp = sentence.charAt(i);
-            if(temp == ' '){
+        int n = sentence.length();
+
+        Map<Character, List<Integer>> positions = new HashMap<>();
+        Set<Character> used = new HashSet<>();
+
+        for (int i = 0; i < n; i++) {
+            char c = sentence.charAt(i);
+
+            if (Character.isLowerCase(c)) {
+                positions.computeIfAbsent(c, key -> new ArrayList<>()).add(i);
+            } else if (!Character.isUpperCase(c)) {
                 return "invalid";
             }
-            if(temp - 'A' < 0){
-                smallidx.add(i);
-            }
         }
-        int length = smallidx.size();
-        int start = 0;
-        int end = smallidx.get(0);
-        for(int i = 1; i < length; i++){
-            char temp = sentence.charAt(smallidx.get(i));
-            if(used.contains(temp)) return "invalid";
-            if(temp != sentence.charAt(smallidx.get(i-1))){
-                for(int j = start; j < end; j++){
-                    if(sentence.charAt(j) - 'A' >= 0){
-                        sb.append(sentence.charAt(j));
-                    }
-                    j++;
+
+        StringBuilder answer = new StringBuilder();
+        int index = 0;
+
+        while (index < n) {
+            int start = index;
+            int end;
+            Character outer = null;
+            Character inner = null;
+
+            char first = sentence.charAt(index);
+
+            if (Character.isLowerCase(first)) {
+                if (used.contains(first)) return "invalid";
+
+                List<Integer> pos = positions.get(first);
+
+                if (pos.size() != 2 || pos.get(0) != index) {
+                    return "invalid";
                 }
-                sb.append(' ');
-                start = smallidx.get(i);
+
+                outer = first;
+                end = pos.get(1);
+
+                if (end <= start + 1) return "invalid";
+
+                if (start + 1 < end &&
+                    Character.isLowerCase(sentence.charAt(start + 2))) {
+                    inner = sentence.charAt(start + 2);
+                }
+
+            } else {
+                if (index + 1 < n &&
+                    Character.isLowerCase(sentence.charAt(index + 1))) {
+
+                    char marker = sentence.charAt(index + 1);
+                    List<Integer> pos = positions.get(marker);
+
+                    boolean alternating = true;
+
+                    for (int i = 1; i < pos.size(); i++) {
+                        if (pos.get(i) - pos.get(i - 1) != 2) {
+                            alternating = false;
+                            break;
+                        }
+                    }
+
+                    if (pos.get(0) == index + 1 && alternating) {
+                        inner = marker;
+                        end = pos.get(pos.size() - 1) + 1;
+                    } else {
+                        end = index;
+                    }
+                } else {
+                    end = index;
+                }
             }
-            else{
-                end = smallidx.get(i);
+
+            if (outer != null) {
+                if (used.contains(outer)) return "invalid";
+                used.add(outer);
             }
+
+            if (inner != null) {
+                if (used.contains(inner) || inner.equals(outer)) {
+                    return "invalid";
+                }
+                used.add(inner);
+            }
+
+            StringBuilder word = new StringBuilder();
+            int contentStart = outer == null ? start : start + 1;
+            int contentEnd = outer == null ? end : end - 1;
+
+            for (int i = contentStart; i <= contentEnd; i++) {
+                char c = sentence.charAt(i);
+
+                if (Character.isUpperCase(c)) {
+                    word.append(c);
+                    continue;
+                }
+
+                if (inner == null || c != inner) {
+                    return "invalid";
+                }
+
+                if (i <= contentStart || i >= contentEnd ||
+                    !Character.isUpperCase(sentence.charAt(i - 1)) ||
+                    !Character.isUpperCase(sentence.charAt(i + 1))) {
+                    return "invalid";
+                }
+            }
+
+            if (word.length() == 0) return "invalid";
+
+            if (inner != null) {
+                List<Integer> pos = positions.get(inner);
+
+                if (pos.get(0) < contentStart ||
+                    pos.get(pos.size() - 1) > contentEnd) {
+                    return "invalid";
+                }
+
+                for (int i = 1; i < pos.size(); i++) {
+                    if (pos.get(i) - pos.get(i - 1) != 2) {
+                        return "invalid";
+                    }
+                }
+            }
+
+            if (answer.length() > 0) answer.append(' ');
+            answer.append(word);
+
+            index = end + 1;
         }
-        
-        return sb.toString();
+
+        return answer.toString();
     }
 }
